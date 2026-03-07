@@ -1,0 +1,93 @@
+import json
+import logging
+import os
+import re
+import time
+
+from dotenv import load_dotenv
+from mock_og import mock_infer
+
+load_dotenv()
+
+logger = logging.getLogger(__name__)
+
+MOCK_OG: bool = os.getenv("MOCK_OG", "false").lower() in ("true", "1", "yes")
+OPENGRADIENT_API_KEY: str = os.getenv("OPENGRADIENT_API_KEY", "")
+MODEL_ID: str = os.getenv("OPENGRADIENT_MODEL_ID", "og/alpha-signal-v1")
+
+
+def infer(params: dict) -> dict:
+    if MOCK_OG or not OPENGRADIENT_API_KEY:
+        logger.info("OG: MOCK mode")
+        return mock_infer(MODEL_ID, params)
+
+    try:
+        import opengradient as og
+        ticker = params.get("ticker", "BTC")
+        timeframe = params.get("timeframe", "1h")
+
+        client = og.Client(private_key=OPENGRADIENT_API_KEY)
+
+        prompt = f"""Analyze {ticker} on {timeframe} timeframe. Return ONLY this JSON, no other text:
+{{
+  "signal": "BUY",
+  "confidence": "HIGH",
+  "score": 0.85,
+  "reasoning": "brief reason here",
+  "indicators": {{"RSI": 58.2, "MACD": 0.03, "volume_change_pct": 12.4}}
+}}
+Replace values with your actual analysis. Return ONLY valid JSON."""
+
+        response = client.llm.chat(
+            model=og.TEE_LLM.CLAUDE_HAIKU_4_5,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        # Extract text from TextGenerationOutput
+        text = response.chat_output.get("content", "") if isinstance(response.chat_output, dict) else str(response.chat_output)
+        logger.info("OG raw text: %s", text[:300])
+
+        # Parse JSON - try multiple strategies
+        output = None
+
+        # Strategy 1: ```json blocks
+        m = re.search(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL)
+        if m:
+            try:
+                output = json.loads(m.group(1))
+            except Exception:
+                pass
+
+        # Strategy 2: raw {} block
+        if not output:
+            m = re.search(r"(\{.*\})", text, re.DOTALL)
+            if m:
+                try:
+                    output = json.loads(m.group(1))
+                except Exception:
+                    pass
+
+        # Strategy 3: fallback
+        if not output:
+            output = {
+                "signal": "HOLD",
+                "confidence": "LOW",
+                "score": 0.5,
+                "reasoning": text[:300],
+                "indicators": {}
+            }
+
+        proof = {
+            "attestation_id": getattr(response, "transaction_hash", f"og-live-{int(time.time())}"),
+            "model_id": MODEL_ID,
+            "timestamp": getattr(response, "tee_timestamp", int(time.time())),
+            "tee_signature": getattr(response, "tee_signature", None),
+            "payment_hash": getattr(response, "payment_hash", None),
+            "mock": False,
+        }
+
+        return {"output": output, "proof": proof}
+
+    except Exception as exc:
+        logger.exception("OG SDK failed: %s", exc)
+        raise

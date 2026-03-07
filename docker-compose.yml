@@ -1,0 +1,102 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Verifiable Alpha Signals Marketplace – Docker Compose
+#
+# Services:
+#   db       – PostgreSQL 15
+#   redis    – Redis 7
+#   backend  – FastAPI + Uvicorn (port 8000)
+#   worker   – RQ worker (processes "signals" queue)
+#
+# Quick start:
+#   cp backend/.env.example backend/.env   # edit as needed
+#   docker compose up --build
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vasm
+      POSTGRES_PASSWORD: vasm
+      POSTGRES_DB: vasm
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vasm -d vasm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Redis ───────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── FastAPI backend ─────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      # Override connection strings to use docker service names
+      DATABASE_URL: postgresql://vasm:vasm@db:5432/vasm
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./backend:/app         # live reload in dev
+      - proofs_data:/app/proofs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  # ── RQ Worker ───────────────────────────────────────────────────────────────
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: rq worker signals --url redis://redis:6379/0
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://vasm:vasm@db:5432/vasm
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+      - proofs_data:/app/proofs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  proofs_data:

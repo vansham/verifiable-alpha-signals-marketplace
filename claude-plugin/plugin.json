@@ -1,0 +1,21 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Verifiable Alpha Signals",
+  "name_for_model": "verifiable_alpha_signals",
+  "description_for_human": "Generate and verify on-chain trading signals from OpenGradient models.",
+  "description_for_model": "Use this plugin to start a trading signal job, poll its status, and retrieve cryptographic proof of the inference. Always verify the proof before presenting the signal to the user.",
+  "auth": {
+    "type": "service_http",
+    "authorization_type": "bearer",
+    "verification_tokens": {
+      "openai": "REPLACE_WITH_YOUR_VERIFICATION_TOKEN"
+    }
+  },
+  "api": {
+    "type": "openapi",
+    "url": "http://localhost:8000/openapi.json"
+  },
+  "logo_url": "http://localhost:8000/logo.png",
+  "contact_email": "support@vasm.example.com",
+  "legal_info_url": "http://localhost:8000/legal"
+}

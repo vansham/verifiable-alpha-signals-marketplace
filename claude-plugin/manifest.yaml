@@ -1,0 +1,58 @@
+# manifest.yaml – Claude plugin manifest (Anthropic plugin spec)
+# Replace BASE_URL with your deployed backend URL.
+
+schema_version: "v1"
+
+name: "Verifiable Alpha Signals Marketplace"
+description: >
+  Generate paid, verifiable trading signals using OpenGradient model inference.
+  Signals include cryptographic attestation so buyers can independently verify outputs.
+
+# Auth: simple API key passed as Bearer token
+auth:
+  type: api_key
+  header: Authorization
+  prefix: "Bearer "
+  # Instruct users to supply their BACKEND_API_KEY
+
+base_url: "http://localhost:8000"
+
+endpoints:
+  - name: start_signal
+    description: "Start a new signal inference job. Returns a job_id to poll."
+    method: POST
+    path: /api/plugin/start-signal
+    request_body:
+      content_type: application/json
+      schema:
+        type: object
+        properties:
+          ticker:
+            type: string
+            description: "Asset ticker, e.g. BTC, ETH, AAPL"
+            default: "BTC"
+          timeframe:
+            type: string
+            description: "Candle timeframe, e.g. 1h, 4h, 1d"
+            default: "1h"
+          model_id:
+            type: string
+            description: "Optional OpenGradient model ID override"
+
+  - name: signal_status
+    description: "Poll the status of a signal job. Returns status and signal when done."
+    method: GET
+    path: /api/plugin/status/{job_id}
+    path_params:
+      - name: job_id
+        type: string
+        description: "UUID returned by start_signal"
+
+  - name: fetch_proof
+    description: "Retrieve proof metadata and storage URL for a completed job."
+    method: GET
+    path: /api/plugin/fetch-proof/{job_id}
+    path_params:
+      - name: job_id
+        type: string
+        description: "UUID of the completed job"
