@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VASM — Verifiable Alpha Signals</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #020408;
+      --bg2: #070d14;
+      --bg3: #0c1520;
+      --border: #0f2035;
+      --border2: #163048;
+      --green: #00ff88;
+      --green2: #00cc6a;
+      --red: #ff3355;
+      --yellow: #ffcc00;
+      --blue: #0088ff;
+      --cyan: #00d4ff;
+      --text: #c8dde8;
+      --text2: #5a7a8a;
+      --text3: #2a4a5a;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'Space Grotesk', sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Scanline effect */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 24px 0 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-mark {
+      width: 36px;
+      height: 36px;
+      border: 1.5px solid var(--green);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .logo-mark::before {
+      content: '';
+      width: 16px;
+      height: 16px;
+      background: var(--green);
+      clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .logo-text {
+      font-family: var(--mono);
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      color: var(--green);
+    }
+
+    .logo-sub {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text3);
+      letter-spacing: 0.2em;
+      margin-top: 2px;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text2);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: blink 1.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 48px 0 40px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero-tag {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      color: var(--green);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hero-tag::before {
+      content: '//';
+      color: var(--text3);
+    }
+
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 48px);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+
+    .hero h1 span {
+      color: var(--green);
+      text-shadow: 0 0 40px rgba(0,255,136,0.3);
+    }
+
+    .hero p {
+      font-size: 15px;
+      color: var(--text2);
+      max-width: 560px;
+      line-height: 1.7;
+      font-weight: 300;
+    }
+
+    /* ── Main grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+      margin: 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .panel {
+      background: var(--bg);
+      padding: 28px;
+    }
+
+    .panel-full {
+      grid-column: 1 / -1;
+    }
+
+    .panel-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      color: var(--text3);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Signal Form ── */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: var(--text2);
+    }
+
+    .field input, .field select {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      appearance: none;
+    }
+
+    .field input:focus, .field select:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 1px var(--green), inset 0 0 20px rgba(0,255,136,0.03);
+    }
+
+    .field select option {
+      background: var(--bg2);
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      background: transparent;
+      border: 1px solid var(--green);
+      color: var(--green);
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.2s;
+    }
+
+    .btn-primary::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--green);
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+    }
+
+    .btn-primary:hover::before { transform: translateX(0); }
+    .btn-primary:hover { color: var(--bg); }
+    .btn-primary span { position: relative; z-index: 1; }
+
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-primary:disabled::before { display: none; }
+
+    /* ── Signal Result ── */
+    .signal-display {
+      text-align: center;
+      padding: 20px 0;
+    }
+
+    .signal-value {
+      font-family: var(--mono);
+      font-size: 56px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      line-height: 1;
+      margin-bottom: 8px;
+      transition: all 0.3s;
+    }
+
+    .signal-value.BUY { color: var(--green); text-shadow: 0 0 40px rgba(0,255,136,0.5); }
+    .signal-value.SELL { color: var(--red); text-shadow: 0 0 40px rgba(255,51,85,0.5); }
+    .signal-value.HOLD, .signal-value.NEUTRAL { color: var(--yellow); text-shadow: 0 0 40px rgba(255,204,0,0.4); }
+    .signal-value.-- { color: var(--text3); }
+
+    .signal-meta {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 16px;
+    }
+
+    .meta-item {
+      text-align: center;
+    }
+
+    .meta-label {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: var(--text3);
+      margin-bottom: 4px;
+    }
+
+    .meta-value {
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--cyan);
+    }
+
+    /* Score bar */
+    .score-bar {
+      margin-top: 20px;
+      background: var(--bg3);
+      height: 4px;
+      position: relative;
+    }
+
+    .score-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--green2), var(--green));
+      transition: width 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+      box-shadow: 0 0 12px var(--green);
+    }
+
+    /* ── Job status ── */
+    .job-id {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text3);
+      margin-top: 12px;
+      word-break: break-all;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      padding: 4px 10px;
+      border: 1px solid;
+    }
+
+    .status-badge.pending { color: var(--yellow); border-color: var(--yellow); }
+    .status-badge.running { color: var(--cyan); border-color: var(--cyan); }
+    .status-badge.done { color: var(--green); border-color: var(--green); }
+    .status-badge.failed { color: var(--red); border-color: var(--red); }
+    .status-badge.idle { color: var(--text3); border-color: var(--text3); }
+
+    /* ── Proof panel ── */
+    .proof-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+    }
+
+    .proof-row:last-child { border-bottom: none; }
+
+    .proof-key {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: var(--text3);
+      flex-shrink: 0;
+      padding-top: 2px;
+    }
+
+    .proof-val {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text2);
+      word-break: break-all;
+      text-align: right;
+    }
+
+    .proof-val.hash { color: var(--cyan); }
+    .proof-val.verified { color: var(--green); }
+
+    /* ── Log ── */
+    .log {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text2);
+      line-height: 1.8;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+
+    .log::-webkit-scrollbar { width: 3px; }
+    .log::-webkit-scrollbar-track { background: var(--bg); }
+    .log::-webkit-scrollbar-thumb { background: var(--border2); }
+
+    .log-line { display: flex; gap: 12px; }
+    .log-time { color: var(--text3); flex-shrink: 0; }
+    .log-msg.ok { color: var(--green); }
+    .log-msg.err { color: var(--red); }
+    .log-msg.info { color: var(--cyan); }
+
+    /* ── Reasoning ── */
+    .reasoning-text {
+      font-size: 13px;
+      color: var(--text2);
+      line-height: 1.7;
+      font-weight: 300;
+      font-style: italic;
+      padding: 16px;
+      border-left: 2px solid var(--border2);
+      background: var(--bg2);
+    }
+
+    /* ── History table ── */
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    .history-table th {
+      text-align: left;
+      padding: 8px 12px;
+      color: var(--text3);
+      letter-spacing: 0.15em;
+      font-size: 9px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .history-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text2);
+    }
+
+    .history-table tr:last-child td { border-bottom: none; }
+
+    .sig-buy { color: var(--green); }
+    .sig-sell { color: var(--red); }
+    .sig-hold { color: var(--yellow); }
+    .sig-neutral { color: var(--yellow); }
+
+    /* ── Loading spinner ── */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--cyan);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 680px) {
+      .grid { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+      .panel-full { grid-column: 1; }
+      .signal-value { font-size: 40px; }
+    }
+
+    /* ── Config bar ── */
+    .config-bar {
+      padding: 14px 28px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text3);
+    }
+
+    .config-input {
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      color: var(--text2);
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 6px 10px;
+      outline: none;
+      flex: 1;
+      max-width: 400px;
+    }
+
+    .config-input:focus {
+      border-color: var(--green);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 24px;
+      color: var(--text3);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="logo">
+      <div class="logo-mark"></div>
+      <div>
+        <div class="logo-text">VASM</div>
+        <div class="logo-sub">VERIFIABLE ALPHA SIGNALS</div>
+      </div>
+    </div>
+    <div class="status-bar">
+      <div class="status-dot" id="systemDot"></div>
+      <span id="systemStatus">CONNECTING...</span>
+    </div>
+  </header>
+</div>
+
+<!-- Config bar -->
+<div class="config-bar">
+  <span>BACKEND_URL</span>
+  <input class="config-input" id="backendUrl" value="http://localhost:8000" placeholder="http://localhost:8000" />
+  <span>API_KEY</span>
+  <input class="config-input" id="apiKey" type="password" value="mera-secret-key-2024" placeholder="your-api-key" />
+</div>
+
+<div class="container">
+  <div class="hero">
+    <div class="hero-tag">OPENGRADIENT TEE INFERENCE</div>
+    <h1>Trading signals with<br><span>cryptographic proof.</span></h1>
+    <p>Every signal is generated inside a Trusted Execution Environment and anchored with a verifiable attestation. No black boxes.</p>
+  </div>
+
+  <div class="grid">
+
+    <!-- Request panel -->
+    <div class="panel">
+      <div class="panel-label">REQUEST SIGNAL</div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>TICKER</label>
+          <input id="ticker" value="BTC" placeholder="BTC" />
+        </div>
+        <div class="field">
+          <label>TIMEFRAME</label>
+          <select id="timeframe">
+            <option value="1h">1H</option>
+            <option value="4h">4H</option>
+            <option value="1d">1D</option>
+            <option value="15m">15M</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="requestBtn" onclick="requestSignal()">
+        <span id="btnText">▶ REQUEST SIGNAL</span>
+      </button>
+
+      <div style="margin-top: 20px;">
+        <div class="panel-label">STATUS</div>
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+          <span class="status-badge idle" id="statusBadge">● IDLE</span>
+          <span id="spinner" style="display:none;"><span class="spinner"></span></span>
+        </div>
+        <div class="job-id" id="jobIdDisplay">—</div>
+      </div>
+    </div>
+
+    <!-- Signal result panel -->
+    <div class="panel">
+      <div class="panel-label">SIGNAL OUTPUT</div>
+
+      <div class="signal-display">
+        <div class="signal-value --" id="signalValue">—</div>
+        <div class="score-bar"><div class="score-fill" id="scoreBar" style="width:0%"></div></div>
+        <div class="signal-meta">
+          <div class="meta-item">
+            <div class="meta-label">CONFIDENCE</div>
+            <div class="meta-value" id="confidenceVal">—</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">SCORE</div>
+            <div class="meta-value" id="scoreVal">—</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">MODEL</div>
+            <div class="meta-value" style="font-size:10px;">CLAUDE HAIKU</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reasoning panel -->
+    <div class="panel panel-full" id="reasoningPanel" style="display:none;">
+      <div class="panel-label">REASONING</div>
+      <div class="reasoning-text" id="reasoningText">—</div>
+    </div>
+
+    <!-- Proof panel -->
+    <div class="panel">
+      <div class="panel-label">CRYPTOGRAPHIC PROOF</div>
+      <div id="proofContent">
+        <div class="empty-state">NO PROOF YET</div>
+      </div>
+    </div>
+
+    <!-- Log panel -->
+    <div class="panel">
+      <div class="panel-label">ACTIVITY LOG</div>
+      <div class="log" id="logPanel">
+        <div class="log-line">
+          <span class="log-time">—</span>
+          <span class="log-msg">waiting for request...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- History panel -->
+    <div class="panel panel-full">
+      <div class="panel-label">SIGNAL HISTORY</div>
+      <div id="historyContent">
+        <div class="empty-state">NO SIGNALS YET — REQUEST YOUR FIRST SIGNAL ABOVE</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const history = [];
+  let polling = null;
+
+  function getBase() { return document.getElementById('backendUrl').value.replace(/\/$/, ''); }
+  function getKey() { return document.getElementById('apiKey').value; }
+  function headers() { return { 'Authorization': `Bearer ${getKey()}`, 'Content-Type': 'application/json' }; }
+
+  function log(msg, type='') {
+    const panel = document.getElementById('logPanel');
+    const now = new Date().toLocaleTimeString('en', {hour12:false});
+    const line = document.createElement('div');
+    line.className = 'log-line';
+    line.innerHTML = `<span class="log-time">${now}</span><span class="log-msg ${type}">${msg}</span>`;
+    panel.appendChild(line);
+    panel.scrollTop = panel.scrollHeight;
+    if (panel.children.length > 50) panel.removeChild(panel.children[0]);
+  }
+
+  function setStatus(status) {
+    const badge = document.getElementById('statusBadge');
+    badge.textContent = `● ${status.toUpperCase()}`;
+    badge.className = `status-badge ${status.toLowerCase()}`;
+    document.getElementById('spinner').style.display =
+      ['pending','running'].includes(status.toLowerCase()) ? 'inline' : 'none';
+  }
+
+  async function checkHealth() {
+    try {
+      const r = await fetch(`${getBase()}/health`);
+      const dot = document.getElementById('systemDot');
+      const txt = document.getElementById('systemStatus');
+      if (r.ok) {
+        dot.style.background = 'var(--green)';
+        dot.style.boxShadow = '0 0 8px var(--green)';
+        txt.textContent = 'SYSTEM ONLINE';
+      } else throw new Error();
+    } catch {
+      document.getElementById('systemDot').style.background = 'var(--red)';
+      document.getElementById('systemStatus').textContent = 'OFFLINE';
+    }
+  }
+
+  async function requestSignal() {
+    const btn = document.getElementById('requestBtn');
+    const ticker = document.getElementById('ticker').value.trim().toUpperCase() || 'BTC';
+    const timeframe = document.getElementById('timeframe').value;
+
+    btn.disabled = true;
+    document.getElementById('btnText').textContent = '⟳ REQUESTING...';
+    setStatus('pending');
+    log(`Requesting signal: ${ticker}/${timeframe}`, 'info');
+
+    // Reset UI
+    document.getElementById('signalValue').textContent = '—';
+    document.getElementById('signalValue').className = 'signal-value --';
+    document.getElementById('scoreBar').style.width = '0%';
+    document.getElementById('confidenceVal').textContent = '—';
+    document.getElementById('scoreVal').textContent = '—';
+    document.getElementById('reasoningPanel').style.display = 'none';
+    document.getElementById('proofContent').innerHTML = '<div class="empty-state">WAITING FOR PROOF...</div>';
+
+    try {
+      const r = await fetch(`${getBase()}/start-signal`, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ ticker, timeframe })
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      const jobId = data.job_id;
+
+      document.getElementById('jobIdDisplay').textContent = `JOB: ${jobId}`;
+      log(`Job created: ${jobId.slice(0,8)}...`, 'ok');
+
+      // Poll
+      let attempts = 0;
+      polling = setInterval(async () => {
+        attempts++;
+        try {
+          const sr = await fetch(`${getBase()}/signal-status/${jobId}`, { headers: headers() });
+          const sd = await sr.json();
+          setStatus(sd.status);
+
+          if (sd.status === 'done') {
+            clearInterval(polling);
+            log(`Signal received: ${sd.signal?.signal}`, 'ok');
+            displaySignal(sd.signal, ticker, timeframe, jobId);
+            fetchProof(jobId);
+            btn.disabled = false;
+            document.getElementById('btnText').textContent = '▶ REQUEST SIGNAL';
+          } else if (sd.status === 'failed') {
+            clearInterval(polling);
+            log(`Job failed: ${sd.error}`, 'err');
+            btn.disabled = false;
+            document.getElementById('btnText').textContent = '▶ REQUEST SIGNAL';
+          } else {
+            log(`Polling... (${sd.status})`, '');
+          }
+
+          if (attempts > 60) {
+            clearInterval(polling);
+            log('Timeout waiting for signal', 'err');
+            btn.disabled = false;
+            document.getElementById('btnText').textContent = '▶ REQUEST SIGNAL';
+          }
+        } catch(e) {
+          log(`Poll error: ${e.message}`, 'err');
+        }
+      }, 2000);
+
+    } catch(e) {
+      log(`Error: ${e.message}`, 'err');
+      setStatus('idle');
+      btn.disabled = false;
+      document.getElementById('btnText').textContent = '▶ REQUEST SIGNAL';
+    }
+  }
+
+  function displaySignal(signal, ticker, timeframe, jobId) {
+    if (!signal) return;
+    const sv = document.getElementById('signalValue');
+    sv.textContent = signal.signal || '—';
+    sv.className = `signal-value ${signal.signal || '--'}`;
+
+    const score = parseFloat(signal.score) || 0;
+    document.getElementById('scoreBar').style.width = `${score * 100}%`;
+    document.getElementById('confidenceVal').textContent = signal.confidence || '—';
+    document.getElementById('scoreVal').textContent = score.toFixed(2);
+
+    if (signal.reasoning) {
+      document.getElementById('reasoningPanel').style.display = 'block';
+      document.getElementById('reasoningText').textContent = signal.reasoning;
+    }
+
+    // Add to history
+    history.unshift({ ticker, timeframe, jobId, signal: signal.signal, confidence: signal.confidence, score, time: new Date() });
+    renderHistory();
+  }
+
+  async function fetchProof(jobId) {
+    try {
+      const r = await fetch(`${getBase()}/fetch-proof/${jobId}`, { headers: headers() });
+      if (!r.ok) return;
+      const p = await r.json();
+      log('Proof retrieved ✓', 'ok');
+
+      const meta = p.proof_metadata || {};
+      const html = `
+        <div class="proof-row">
+          <span class="proof-key">PROOF_HASH</span>
+          <span class="proof-val hash">${(p.proof_hash||'—').slice(0,32)}...</span>
+        </div>
+        <div class="proof-row">
+          <span class="proof-key">TEE_SIG</span>
+          <span class="proof-val verified">${meta.tee_signature ? '✓ VERIFIED' : (meta.mock ? 'MOCK' : '—')}</span>
+        </div>
+        <div class="proof-row">
+          <span class="proof-key">TX_HASH</span>
+          <span class="proof-val">${meta.attestation_id || '—'}</span>
+        </div>
+        <div class="proof-row">
+          <span class="proof-key">TIMESTAMP</span>
+          <span class="proof-val">${meta.timestamp ? new Date(meta.timestamp*1000).toISOString() : '—'}</span>
+        </div>
+        <div class="proof-row">
+          <span class="proof-key">STORAGE</span>
+          <span class="proof-val"><a href="${p.storage_url}" target="_blank" style="color:var(--cyan);text-decoration:none;">VIEW RAW ↗</a></span>
+        </div>
+      `;
+      document.getElementById('proofContent').innerHTML = html;
+    } catch(e) {
+      log(`Proof fetch error: ${e.message}`, 'err');
+    }
+  }
+
+  function renderHistory() {
+    if (!history.length) return;
+    const rows = history.map(h => `
+      <tr>
+        <td>${h.time.toLocaleTimeString('en',{hour12:false})}</td>
+        <td style="color:var(--text)">${h.ticker}</td>
+        <td>${h.timeframe}</td>
+        <td class="sig-${(h.signal||'').toLowerCase()}">${h.signal||'—'}</td>
+        <td>${h.confidence||'—'}</td>
+        <td>${(h.score||0).toFixed(2)}</td>
+        <td style="color:var(--text3)">${h.jobId.slice(0,12)}...</td>
+      </tr>
+    `).join('');
+
+    document.getElementById('historyContent').innerHTML = `
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>TIME</th><th>TICKER</th><th>TF</th>
+            <th>SIGNAL</th><th>CONF</th><th>SCORE</th><th>JOB_ID</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  // Init
+  checkHealth();
+  setInterval(checkHealth, 15000);
+  log('VASM dashboard initialised', 'ok');
+  log('Configure BACKEND_URL and API_KEY above', 'info');
+</script>
+</body>
+</html>
