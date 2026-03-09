@@ -27,9 +27,22 @@ def get_market_data(ticker: str) -> dict:
             "XRP": "ripple", "AVAX": "avalanche-2", "MATIC": "matic-network",
         }
         coin_id = coin_map.get(ticker.upper(), ticker.lower())
-        url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true"
-        r = requests.get(url, timeout=5)
-        data = r.json().get(coin_id, {})
+        # Try multiple APIs
+        data = {}
+        # Try Binance first (no rate limit issues)
+        try:
+            symbol = ticker.upper() + "USDT"
+            r = requests.get(f"https://api.binance.com/api/v3/ticker/24hr?symbol={symbol}", timeout=5)
+            b = r.json()
+            if "lastPrice" in b:
+                data = {
+                    "usd": float(b["lastPrice"]),
+                    "usd_24h_change": float(b["priceChangePercent"]),
+                    "usd_24h_vol": float(b["quoteVolume"]),
+                    "usd_market_cap": 0,
+                }
+        except Exception as e:
+            logger.warning("Binance failed: %s", e)
         logger.info("CoinGecko response for %s: %s", coin_id, data)
         if data:
             return {
