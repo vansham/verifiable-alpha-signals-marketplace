@@ -61,8 +61,17 @@ def infer(params: dict) -> dict:
             v = market['volume_24h']
             market_context = f"Current {ticker} Price: ${p} | 24h Change: {c}% | Volume: ${v:,.0f}"
         
-        prompt = f"""Analyze {ticker} on {timeframe} timeframe.
-{market_context}
+        prompt = f"""You are a crypto trading signal generator. Based on the data below, generate a trading signal.
+
+{market_context if market_context else f"No live data available for {ticker}."}
+
+Rules:
+- If 24h change > 3%: lean BUY
+- If 24h change < -3%: lean SELL  
+- If -3% to 3%: HOLD or NEUTRAL based on volume
+- High volume (>$1B) increases confidence
+- Use the actual price and change data to determine signal
+
 Return ONLY this JSON, no other text:
 {{
   "signal": "BUY",
