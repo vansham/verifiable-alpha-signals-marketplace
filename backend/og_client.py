@@ -30,6 +30,7 @@ def get_market_data(ticker: str) -> dict:
         url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true"
         r = requests.get(url, timeout=5)
         data = r.json().get(coin_id, {})
+        logger.info("CoinGecko response for %s: %s", coin_id, data)
         if data:
             return {
                 "price_usd": data.get("usd", "N/A"),
