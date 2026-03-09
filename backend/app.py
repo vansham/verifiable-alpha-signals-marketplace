@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import redis as redis_lib
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
