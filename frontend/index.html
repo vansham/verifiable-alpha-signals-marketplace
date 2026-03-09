@@ -683,8 +683,8 @@
   const history = [];
   let polling = null;
 
-  function getBase() { return document.getElementById('backendUrl').value.replace(/\/$/, ''); }
-  function getKey() { return document.getElementById('apiKey').value; }
+  function getBase() { return 'https://verifiable-alpha-signals-marketplace.onrender.com'; }
+  function getKey() { return 'mera-secret-key-2024'; }
   function headers() { return { 'Authorization': `Bearer ${getKey()}`, 'Content-Type': 'application/json' }; }
 
   function log(msg, type='') {
