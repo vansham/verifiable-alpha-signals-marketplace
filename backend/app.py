@@ -48,6 +48,15 @@ app = FastAPI(
     description="Paid, verifiable trading signals powered by OpenGradient.",
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
+
+
 # ── Redis / RQ setup ──────────────────────────────────────────────────────────
 redis_conn = redis_lib.from_url(REDIS_URL)
 signal_queue = Queue("signals", connection=redis_conn)
