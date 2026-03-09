@@ -56,7 +56,10 @@ def infer(params: dict) -> dict:
         market = get_market_data(ticker)
         market_context = ""
         if market:
-            market_context = f"Current {ticker} Price: ${market[\'price_usd\']} | 24h Change: {market[\'change_24h\']}% | Volume: ${market[\'volume_24h\']:,.0f}"
+            p = market['price_usd']
+            c = market['change_24h']
+            v = market['volume_24h']
+            market_context = f"Current {ticker} Price: ${p} | 24h Change: {c}% | Volume: ${v:,.0f}"
         
         prompt = f"""Analyze {ticker} on {timeframe} timeframe.
 {market_context}
