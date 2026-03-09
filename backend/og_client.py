@@ -16,6 +16,31 @@ OPENGRADIENT_API_KEY: str = os.getenv("OPENGRADIENT_API_KEY", "")
 MODEL_ID: str = os.getenv("OPENGRADIENT_MODEL_ID", "og/alpha-signal-v1")
 
 
+
+def get_market_data(ticker: str) -> dict:
+    """Fetch real-time data from CoinGecko"""
+    try:
+        import requests
+        coin_map = {
+            "BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana",
+            "BNB": "binancecoin", "DOGE": "dogecoin", "ADA": "cardano",
+            "XRP": "ripple", "AVAX": "avalanche-2", "MATIC": "matic-network",
+        }
+        coin_id = coin_map.get(ticker.upper(), ticker.lower())
+        url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true"
+        r = requests.get(url, timeout=5)
+        data = r.json().get(coin_id, {})
+        if data:
+            return {
+                "price_usd": data.get("usd", "N/A"),
+                "change_24h": round(data.get("usd_24h_change", 0), 2),
+                "volume_24h": data.get("usd_24h_vol", "N/A"),
+                "market_cap": data.get("usd_market_cap", "N/A"),
+            }
+    except Exception as e:
+        logger.warning("CoinGecko failed: %s", e)
+    return {}
+
 def infer(params: dict) -> dict:
     if MOCK_OG or not OPENGRADIENT_API_KEY:
         logger.info("OG: MOCK mode")
@@ -28,7 +53,14 @@ def infer(params: dict) -> dict:
 
         client = og.Client(private_key=OPENGRADIENT_API_KEY)
 
-        prompt = f"""Analyze {ticker} on {timeframe} timeframe. Return ONLY this JSON, no other text:
+        market = get_market_data(ticker)
+        market_context = ""
+        if market:
+            market_context = f"Current {ticker} Price: ${market[\'price_usd\']} | 24h Change: {market[\'change_24h\']}% | Volume: ${market[\'volume_24h\']:,.0f}"
+        
+        prompt = f"""Analyze {ticker} on {timeframe} timeframe.
+{market_context}
+Return ONLY this JSON, no other text:
 {{
   "signal": "BUY",
   "confidence": "HIGH",
