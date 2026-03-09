@@ -708,7 +708,7 @@
 
   async function checkHealth() {
     try {
-      const r = await fetch(`${getBase()}/health`);
+      const r = await fetch(`${getBase()}/health`, {method: 'GET', mode: 'cors'});
       const dot = document.getElementById('systemDot');
       const txt = document.getElementById('systemStatus');
       if (r.ok) {
